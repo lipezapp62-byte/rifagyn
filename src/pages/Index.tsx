@@ -149,7 +149,7 @@ const Index = () => {
                 </div>
 
                 <Link to={`/campanha/${homeData.highlight.id}`}>
-                  <Button className="w-full bg-[#ff6100] text-white hover:bg-[#ff7a1a] text-lg py-6 rounded-xl">
+                  <Button className="w-full bg-[#ff6100] text-black hover:bg-[#ff7a1a] text-lg py-6 rounded-xl">
                     Participar agora
                   </Button>
                 </Link>
