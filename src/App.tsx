@@ -8,10 +8,11 @@ import Index from "./pages/Index";
 import Login from "./pages/auth/Login";
 import Cadastro from "./pages/auth/Cadastro";
 import CampaignPage from "./pages/campanha/[id]";
-import AppDashboard from "./pages/app/Dashboard";
-import AdminDashboard from "./pages/admin/Dashboard";
+import AppDashboard from "./pages/app/DashboardApp";
+import AdminDashboard from "./pages/admin/DashboardAdmin";
 import NewCampaign from "./pages/admin/NewCampaign";
 import NotFound from "./pages/NotFound";
+import DashboardApp from "./pages/app/DashboardApp";
 
 const queryClient = new QueryClient();
 
@@ -22,17 +23,17 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Public routes */}
+          {/* Public */}
           <Route path="/" element={<Index />} />
-          <Route path="/campanha/:id" element={<CampaignPage />} />
+          <Route path="/campanha/:slug" element={<CampaignPage />} />
 
           {/* Auth */}
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/cadastro" element={<Cadastro />} />
 
           {/* User */}
-          <Route path="/app" element={<AppDashboard />} />
-          <Route path="/app/dashboard" element={<AppDashboard />} />
+          <Route path="/app/home" element={<DashboardApp />} />
+          <Route path="/app/dashboard" element={<DashboardApp />} />
 
           {/* Admin */}
           <Route path="/admin" element={<AdminDashboard />} />

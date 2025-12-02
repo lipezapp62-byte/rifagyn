@@ -4,106 +4,180 @@
 @tailwind components;
 @tailwind utilities;
 
-/* RifaGyn Design System - Dark theme inspirado no Banco Inter */
-
 @layer base {
   :root {
-    /* RifaGyn Colors - Dark Theme */
     --background: 210 20% 10%;
     --foreground: 0 0% 100%;
-    
+
     --card: 210 20% 7%;
     --card-foreground: 0 0% 100%;
-    
+
     --card-elevated: 210 20% 9%;
-    
+
     --popover: 210 20% 7%;
     --popover-foreground: 0 0% 100%;
-    
-    /* Primary: Orange #ff8a00 */
-    --primary: 32 100% 50%;
+
+    /* Primary: Orange #ff6100 */
+    --primary: 23 100% 50%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 32 100% 60%;
-    
-    /* Secondary variations */
+    --primary-glow: 23 100% 60%;
+
     --secondary: 210 20% 15%;
     --secondary-foreground: 0 0% 100%;
-    
+
     --muted: 210 15% 20%;
     --muted-foreground: 210 10% 60%;
-    
-    --accent: 32 100% 50%;
+
+    --accent: 23 100% 50%;
     --accent-foreground: 0 0% 100%;
-    
-    /* Status colors */
+
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
-    
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    
+
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    
+
     --pending: 0 72% 51%;
     --paid: 142 71% 45%;
     --expired: 210 10% 50%;
-    
-    /* Borders and inputs */
+
     --border: 210 20% 20%;
     --input: 210 20% 15%;
-    --ring: 32 100% 50%;
-    
+    --ring: 23 100% 50%;
+
     --radius: 0.5rem;
-    
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(32 100% 50%), hsl(32 100% 60%));
-    --gradient-card: linear-gradient(180deg, hsl(210 20% 9%), hsl(210 20% 7%));
-    
-    /* Shadows */
-    --shadow-glow: 0 0 40px hsl(32 100% 50% / 0.2);
-    --shadow-card: 0 4px 20px hsl(210 20% 5% / 0.4);
-    
-    /* Transitions */
+
+    --gradient-primary: linear-gradient(135deg,
+        #ff6100,
+        #ff7c1a);
+
+    --gradient-card: linear-gradient(180deg,
+        #0a0c0a,
+        #070909);
+
+    --shadow-glow: 0 0 40px rgba(255, 97, 0, 0.2);
+    --shadow-card: 0 6px 30px rgba(0, 0, 0, 0.8);
+
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
-  
+
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply text-foreground font-sans antialiased;
+    background: #070909;
     font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-semibold;
   }
 }
 
 @layer utilities {
-  .text-gradient {
-    @apply bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent;
+  .pix-code-mask {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    background: #0a0c0a;
+    padding: 8px 12px;
+    border-radius: 8px;
+
+    font-family: monospace;
+    font-size: 13px;
+    color: #9ca3af;
   }
-  
+
   .card-gradient {
     background: var(--gradient-card);
   }
-  
+
+  .combo-animated-border {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .combo-animated-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 0.75rem;
+    padding: 2px;
+
+    background: linear-gradient(90deg,
+        transparent,
+        #ff6100,
+        #ffb347,
+        #ff6100,
+        transparent);
+
+    background-size: 300% 300%;
+
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+
+    animation: borderFlow 3s linear infinite;
+    pointer-events: none;
+  }
+
+  .card-enter {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  .card-enter-active {
+    opacity: 1;
+    transform: scale(1);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+
+
+  @keyframes pulse-fast {
+    0% {
+      opacity: 0.6;
+    }
+
+    50% {
+      opacity: 1;
+    }
+
+    100% {
+      opacity: 0.6;
+    }
+  }
+
+  .animate-pulse-fast {
+    animation: pulse-fast 1.3s linear infinite;
+  }
+
+
+  @keyframes borderFlow {
+    0% {
+      background-position: 0% 50%;
+    }
+
+    100% {
+      background-position: 300% 50%;
+    }
+  }
+
   .glow-primary {
     box-shadow: var(--shadow-glow);
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground;
   }
 }

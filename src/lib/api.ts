@@ -8,7 +8,9 @@ interface ApiResponse<T = any> {
   error?: string;
 }
 
-// Auth token management
+// ===========================
+//   AUTH TOKEN MANAGEMENT
+// ===========================
 export const setAuthToken = (token: string) => {
   const sanitized = token.toString().replace(/^=+/, "");
   localStorage.setItem("rifagyn_token", sanitized);
@@ -22,7 +24,36 @@ export const clearAuthToken = () => {
   localStorage.removeItem("rifagyn_token");
 };
 
-// Generic API call function
+// ==============================================
+//   LISTA TODOS OS NÚMEROS DO USUÁRIO
+// ==============================================
+export const getMyTickets = async () => {
+  const token = getAuthToken();
+
+  const res = await fetch(
+    "https://criadordigital-n8n-webhook.tw9mqd.easypanel.host/webhook/rifagyn/tickets/my",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      }
+      // ❗ Não enviar body — o fluxo N8N não usa
+    }
+  );
+
+  const data = await res.json();
+
+  if (!res.ok || data.success === false) {
+    throw new Error(data.error || "Erro ao buscar números");
+  }
+
+  return data; // success + tickets (exatamente como o fluxo envia)
+};
+
+// ===========================
+//   GENERIC FETCH WRAPPER
+// ===========================
 async function apiCall<T = any>(
   endpoint: string,
   method: "GET" | "POST" | "PUT" | "DELETE" = "POST",
@@ -56,7 +87,9 @@ async function apiCall<T = any>(
   return response.json();
 }
 
-// Auth endpoints
+// ===========================
+//   AUTH ENDPOINTS
+// ===========================
 export const authApi = {
   login: async (phone: string, password: string) => {
     return apiCall("/auth/login", "POST", { phone, password });
@@ -71,7 +104,9 @@ export const authApi = {
   },
 };
 
-// Public endpoints
+// ===========================
+//   PUBLIC ENDPOINTS
+// ===========================
 export const publicApi = {
   getAppHome: async () => {
     return apiCall("/app/home", "POST");
@@ -81,7 +116,6 @@ export const publicApi = {
     return apiCall("/campaigns/public", "POST");
   },
 
-  // 🔥 Agora SEMPRE envia ID
   getCampaignSummary: async (campaignId: string) => {
     return apiCall("/campaigns/summary", "POST", { id: campaignId });
   },
@@ -91,7 +125,9 @@ export const publicApi = {
   },
 
   getCampaignAvailable: async (campaignId: string) => {
-    return apiCall("/campaigns/available", "POST", { campaign_id: campaignId });
+    return apiCall("/campaigns/available", "POST", {
+      campaign_id: campaignId,
+    });
   },
 
   getCampaignCombos: async (campaignId: string) => {
@@ -109,7 +145,9 @@ export const publicApi = {
   },
 };
 
-// User endpoints
+// ===========================
+//   USER ENDPOINTS
+// ===========================
 export const userApi = {
   getOrders: async () => {
     return apiCall("/user/orders", "POST");
@@ -123,16 +161,25 @@ export const userApi = {
     return apiCall("/user/orders/detail", "POST", { order_id: orderId });
   },
 
+  // 🔥 CREATE ORDER — COMPATÍVEL COM SEU FLUXO DO N8N
   createOrder: async (data: {
     campaign_id: string;
     quantity: number;
+    qty?: number;
     combo_id?: string;
+    buyer_name?: string;
+    buyer_whatsapp?: string;
   }) => {
-    return apiCall("/orders/create", "POST", data);
+    return apiCall("/orders/create", "POST", {
+      ...data,
+      qty: data.qty ?? data.quantity, // garante que SEMPRE exista qty
+    });
   },
 };
 
-// Admin endpoints
+// ===========================
+//   ADMIN ENDPOINTS
+// ===========================
 export const adminApi = {
   getDashboard: async () => {
     return apiCall("/admin/dashboard", "POST");
@@ -154,6 +201,8 @@ export const adminApi = {
   },
 
   getCampaignDetails: async (campaignId: string) => {
-    return apiCall("/campaigns/detail", "POST", { campaign_id: campaignId });
+    return apiCall("/campaigns/detail", "POST", {
+      campaign_id: campaignId,
+    });
   },
 };

@@ -1,23 +1,43 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { getAuthToken, clearAuthToken } from "@/lib/api";
 
-const AuthContext = createContext<any>(null);
+interface AuthContextType {
+    isAuthenticated: boolean;
+    login: () => void;
+    logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+    // ✔ Carrega o token quando a aplicação inicia
     useEffect(() => {
         const token = getAuthToken();
         setIsAuthenticated(!!token);
     }, []);
 
+    // ✔ Se o token mudar no localStorage, o estado atualiza sozinho
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const token = getAuthToken();
+            setIsAuthenticated(!!token);
+        }, 500);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    const login = () => {
+        const token = getAuthToken();
+        if (token) {
+            setIsAuthenticated(true);
+        }
+    };
+
     const logout = () => {
         clearAuthToken();
         setIsAuthenticated(false);
-    };
-
-    const login = () => {
-        setIsAuthenticated(true);
     };
 
     return (
@@ -27,4 +47,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const ctx = useContext(AuthContext);
+    if (!ctx) {
+        throw new Error("useAuth deve ser usado dentro de <AuthProvider>");
+    }
+    return ctx;
+};

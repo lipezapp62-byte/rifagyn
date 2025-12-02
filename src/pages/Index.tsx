@@ -2,18 +2,24 @@ import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { CampaignCard } from "@/components/campaign/CampaignCard";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { publicApi } from "@/lib/api";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { SearchBar } from "@/components/ui/SearchBar";
+import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { ComprasAoVivo } from "@/components/live/ComprasAoVivo";
 
-interface Campaign {
+
+interface BackendCampaign {
+  price_base: number;
   id: string;
   slug?: string;
   title: string;
   description?: string;
+  image_url?: string[];
   logo_url?: string;
   base_price: number;
   total_quotas: number;
@@ -23,13 +29,31 @@ interface Campaign {
 }
 
 interface HomeData {
-  highlight?: Campaign;
-  campaigns: Campaign[];
+  highlight?: BackendCampaign;
+  campaigns: BackendCampaign[];
+}
+
+// 🔥 Converter backend -> formato que o CampaignCard espera
+function normalizeCampaign(c: BackendCampaign) {
+  return {
+    id: c.id,
+    title: c.title,
+    description: c.description ?? "",
+    image_url: Array.isArray(c.image_url)
+      ? c.image_url
+      : c.logo_url
+        ? [c.logo_url]
+        : [],
+    price_base: c.price_base ?? 0, // ✅ CORRETO
+    total_quotas: c.total_quotas ?? 0,
+    quotas_sold: c.quotas_sold ?? 0,
+  };
 }
 
 const Index = () => {
   const [loading, setLoading] = useState(true);
   const [homeData, setHomeData] = useState<HomeData | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadHomeData();
@@ -69,85 +93,97 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container mx-auto px-4 py-8 space-y-12">
+      <main className="container mx-auto px-4 py-6">
+        <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-lg space-y-12">
 
-        {homeData?.highlight && (
-          <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-card-elevated via-card to-card-elevated border border-border p-8 md:p-12">
-            <div className="relative z-10 grid md:grid-cols-2 gap-8 items-center">
-              <div className="space-y-6">
-                <div className="inline-block px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
-                  <span className="text-sm font-semibold text-primary">
-                    🔥 Campanha em Destaque
-                  </span>
-                </div>
+          {/* ============================
+            🔥 Destaque estilo RaspaGreen
+        ============================ */}
 
-                <h1 className="text-4xl md:text-5xl font-bold leading-tight">
+          {/* AO VIVO */}
+          <div className="w-full">
+            <ComprasAoVivo />
+          </div>
+
+          {/* BARRA DE PESQUISA */}
+          <div className="w-full mt-4">
+            <SearchBar
+              campaigns={homeData?.campaigns || []}
+              onSelect={(item) => navigate(`/campanha/${item.id}`)}
+            />
+          </div>
+
+          {homeData?.highlight && (
+            <section className="relative rounded-2xl overflow-hidden border border-border bg-card">
+
+              {/* IMAGEM PRINCIPAL */}
+              <div className="relative w-full h-56 md:h-72 overflow-hidden">
+                <img
+                  src={
+                    homeData.highlight.image_url?.[0] ||
+                    homeData.highlight.logo_url
+                  }
+                  alt={homeData.highlight.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40"></div>
+              </div>
+
+              <div className="p-5 space-y-4">
+
+                <h1 className="text-2xl font-bold text-white">
                   {homeData.highlight.title}
                 </h1>
 
                 {homeData.highlight.description && (
-                  <p className="text-lg text-muted-foreground">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
                     {homeData.highlight.description}
                   </p>
                 )}
 
-                <div className="flex items-center gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">A partir de</p>
-                    <p className="text-3xl font-bold text-primary">
-                      R$ {(homeData.highlight.base_price || 0).toFixed(2)}
-                    </p>
-                  </div>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-muted-foreground">A partir de</p>
+                  <p className="text-2xl font-extrabold text-[#ff6100]">
+                    R$ {(homeData.highlight.base_price || 0).toFixed(2)}
+                  </p>
                 </div>
 
                 <Link to={`/campanha/${homeData.highlight.id}`}>
-                  <Button size="lg" className="gap-2 text-lg px-8">
+                  <Button className="w-full bg-[#ff6100] text-white hover:bg-[#ff7a1a] text-lg py-6 rounded-xl">
                     Participar agora
-                    <ArrowRight className="w-5 h-5" />
                   </Button>
                 </Link>
               </div>
-
-              <div className="flex justify-center">
-                {homeData.highlight.logo_url ? (
-                  <img
-                    src={homeData.highlight.logo_url}
-                    alt={homeData.highlight.title}
-                    className="w-full max-w-md rounded-xl shadow-2xl"
-                  />
-                ) : (
-                  <div className="w-full max-w-md aspect-square rounded-xl bg-card-elevated border-2 border-primary/20 flex items-center justify-center">
-                    <span className="text-8xl font-bold text-primary">R</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/20 rounded-full blur-3xl -z-0" />
-          </section>
-        )}
-
-        <section className="space-y-6">
-          <h2 className="text-3xl font-bold">Campanhas em Destaque</h2>
-
-          {homeData?.campaigns && homeData.campaigns.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {homeData.campaigns.map((campaign) => (
-                <CampaignCard key={campaign.id} campaign={campaign} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">
-                Nenhuma campanha disponível no momento.
-              </p>
-            </div>
+            </section>
           )}
-        </section>
-      </main>
+
+          {/* ============================
+            ✨ LISTA DE CAMPANHAS
+        ============================ */}
+          <section className="space-y-6">
+            {homeData?.campaigns && homeData.campaigns.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {homeData.campaigns.map((campaign) => (
+                  <CampaignCard
+                    key={campaign.id}
+                    campaign={normalizeCampaign(campaign)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">
+                  Nenhuma campanha disponível no momento.
+                </p>
+              </div>
+            )}
+          </section>
+        </div>
+      </main >
+
 
       <Footer />
-    </div>
+    </div >
   );
 };
 

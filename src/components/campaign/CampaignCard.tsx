@@ -1,79 +1,91 @@
+import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Link } from "react-router-dom";
+import { Flame } from "lucide-react";
 
-interface CampaignCardProps {
-  campaign: {
-    id: string;
-    slug?: string;
-    title: string;
-    description?: string;
-    logo_url?: string;
-    base_price: number;
-    total_quotas: number;
-    quotas_sold: number;
-    quotas_available: number;
-    status: string;
-  };
+interface Campaign {
+  id: string;
+  title: string;
+  description?: string;
+  image_url?: string[];
+  price_base?: number;
 }
 
-export function CampaignCard({ campaign }: CampaignCardProps) {
-  const progress = ((campaign.quotas_sold || 0) / (campaign.total_quotas || 1)) * 100;
-  const link = `/campanha/${campaign.id}`;
-  const basePrice = campaign.base_price || 0;
+export function CampaignCard({ campaign }: { campaign: Campaign }) {
+  const coverImage = campaign.image_url?.[0] || null;
+  const price = Number(campaign.price_base ?? 0);
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50 bg-card">
-      <div className="p-5 space-y-4">
-        <div className="flex items-start gap-4">
-          <div className="w-16 h-16 rounded-lg bg-card-elevated flex items-center justify-center flex-shrink-0 overflow-hidden">
-            {campaign.logo_url ? (
-              <img
-                src={campaign.logo_url}
-                alt={campaign.title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-2xl font-bold text-primary">R</span>
-            )}
-          </div>
+    <Card className="bg-card border border-border rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all">
 
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg leading-tight mb-1 truncate">
-              {campaign.title}
-            </h3>
-            {campaign.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {campaign.description}
-              </p>
-            )}
+      {/* IMAGEM */}
+      <div className="w-full h-44 overflow-hidden relative rounded-t-2xl">
+        {coverImage ? (
+          <img
+            src={coverImage}
+            alt={campaign.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-card-elevated flex items-center justify-center text-4xl font-bold text-primary">
+            R
           </div>
-        </div>
+        )}
 
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">A partir de</span>
-          <span className="text-xl font-bold text-primary">
-            R$ {basePrice.toFixed(2)}
+        {/* PREÇO DENTRO DA IMAGEM */}
+        <div className="absolute bottom-2 right-2">
+          <span
+            className="
+      px-2.5 
+      py-0.5 
+      rounded-md 
+      bg-[#ff6100] 
+      text-[#131212ff] 
+      text-xs 
+      font-bold 
+      shadow-md
+    "
+          >
+            R$ {price.toFixed(2)}
           </span>
         </div>
+      </div>
 
-        <div className="space-y-2">
-          <Progress value={progress} className="h-2" />
-          <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">
-              {campaign.quotas_sold || 0} de {campaign.total_quotas || 0} cotas vendidas
-            </span>
-            <Badge variant="secondary" className="text-xs">
-              {campaign.quotas_available || 0} disponíveis
-            </Badge>
-          </div>
+      <div className="p-5 space-y-3">
+
+        {/* TÍTULO */}
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold">{campaign.title}</h3>
         </div>
 
-        <Link to={link}>
-          <Button className="w-full font-semibold" size="lg">
-            Ver Campanha
+
+        {/* DESCRIÇÃO */}
+        {campaign.description && (
+          <p className="text-sm text-muted-foreground line-clamp-2">
+            {campaign.description}
+          </p>
+        )}
+
+        {/* BOTÃO */}
+        <Link to={`/campanha/${campaign.id}`}>
+          <Button
+            className="
+      mt-4      
+      w-full 
+      text-[#ffffffff] 
+      text-base 
+      font-medium 
+      rounded-xl 
+      py-6
+      bg-[#ff6100]
+      hover:bg-[#ff7a1a]
+      flex items-center justify-center gap-2
+      combo-animated-border
+      glow-primary
+    "
+          >
+            <Flame size={26} strokeWidth={2} className="mt-[-2px]" color="#ffffffff" />
+            Participar
           </Button>
         </Link>
       </div>

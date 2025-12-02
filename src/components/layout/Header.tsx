@@ -1,7 +1,9 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, User } from "lucide-react";
+import { User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { getLastCampaign } from "@/lib/lastCampaign";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface HeaderProps {
   showAuth?: boolean;
@@ -9,25 +11,48 @@ interface HeaderProps {
 }
 
 export function Header({ showAuth = true, userName }: HeaderProps) {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
+
+  const handleLogoClick = () => {
+    const last = getLastCampaign();
+    if (last) {
+      navigate(last);
+    } else {
+      navigate("/");
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-2">
         <div className="flex h-16 items-center justify-between">
 
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-xl font-bold text-white">R</span>
+          {/* LOGO */}
+          <Link
+            to="/"
+            onClick={handleLogoClick}
+            className="flex items-center -ml-4"
+          >
+            <div
+              className={`
+                flex items-center cursor-pointer
+                ${isMobile ? "h-10 w-40" : "h-12 w-[320px]"}
+              `}
+            >
+              <img
+                src="https://i.imgur.com/3mKZJvB.png"
+                alt="Logo Rifa BNF"
+                className="h-full w-full object-contain"
+              />
             </div>
-            <span className="text-xl font-bold text-gradient">RifaGyn</span>
           </Link>
 
-          {/* Actions */}
-          <div className="flex items-center gap-3">
+          {/* AÇÕES */}
+          <div className="flex items-center gap-2">
 
-            {/* 🔒 Quando NÃO estiver logado */}
+            {/* NÃO LOGADO */}
             {!isAuthenticated && showAuth && (
               <>
                 <Link to="/auth/login">
@@ -37,35 +62,31 @@ export function Header({ showAuth = true, userName }: HeaderProps) {
                 </Link>
 
                 <Link to="/auth/cadastro">
-                  <Button size="sm">
+                  <Button
+                    size="sm"
+                    className={isMobile ? "px-3 text-xs" : ""}
+                  >
                     Criar conta
                   </Button>
                 </Link>
               </>
             )}
 
-            {/* 🔓 Quando estiver LOGADO */}
+            {/* LOGADO */}
             {isAuthenticated && (
-              <>
-                <Link to="/app/dashboard">
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <User className="w-4 h-4" />
-                    <span className="hidden sm:inline">
+              <Link to="/app/home">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <User className="w-4 h-4" />
+
+                  {!isMobile && (
+                    <span>
                       {userName ?? "Minha Conta"}
                     </span>
-                  </Button>
-                </Link>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-500"
-                  onClick={logout}
-                >
-                  Sair
+                  )}
                 </Button>
-              </>
+              </Link>
             )}
+
           </div>
         </div>
       </div>

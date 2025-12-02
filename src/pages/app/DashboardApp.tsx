@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Card } from "@/components/ui/card";
+import { UserTicketsModal } from "@/components/tickets/UserTicketsModal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { userApi, getAuthToken, clearAuthToken } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext"; // adiciona isso
+import { userApi, getAuthToken, clearAuthToken, getMyTickets } from "@/lib/api";
 import { toast } from "sonner";
 import {
   Ticket,
@@ -13,10 +15,19 @@ import {
   Calendar,
 } from "lucide-react";
 
+console.log("🔥 DashboardApp carregou");
+console.log("TOKEN:", getAuthToken());
+
 const DashboardApp = () => {
   const navigate = useNavigate();
+
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
+
+  // 🔥 Modal de números
+  const [ticketsModalOpen, setTicketsModalOpen] = useState(false);
+  const [userTickets, setUserTickets] = useState<any>([]);
+
 
   useEffect(() => {
     const token = getAuthToken();
@@ -31,6 +42,7 @@ const DashboardApp = () => {
   const loadUserData = async () => {
     try {
       setLoading(true);
+
       const [ordersRes, historyRes] = await Promise.all([
         userApi.getOrders(),
         userApi.getHistory(),
@@ -46,15 +58,31 @@ const DashboardApp = () => {
         },
       });
     } catch (error: any) {
-      toast.error(error.message || "Erro ao carregar dados");
+      toast.error(error.message || "Erro ao carregar dados", { duration: 3000 });
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ CONECTADO NO SEU ENDPOINT
+  const handleViewNumbers = async () => {
+    try {
+      const res = await getMyTickets();
+
+      console.log("🎟️ NÚMEROS DO USUÁRIO:", res.tickets);
+      setUserTickets(res.tickets || []);
+      setTicketsModalOpen(true);
+    } catch (err: any) {
+      console.error("ERRO:", err);
+      toast.error("Erro ao buscar seus números", { duration: 3000 });
+    }
+  };
+
+  const { logout } = useAuth(); // puxa o logout do contexto
+
   const handleLogout = () => {
-    clearAuthToken();
-    toast.success("Logout realizado com sucesso");
+    logout(); // ✅ avisa o contexto
+    toast.success("Logout realizado com sucesso", { duration: 3000 });
     navigate("/");
   };
 
@@ -77,108 +105,74 @@ const DashboardApp = () => {
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Welcome */}
         <div>
-          <h1 className="text-3xl font-bold mb-2">Bem-vindo ao RifaGyn</h1>
+          <h1 className="text-3xl font-bold mb-2">Painel de controle</h1>
           <p className="text-muted-foreground">
-            Gerencie suas rifas e acompanhe seus pedidos
+            Gerencie, crie rifas e acompanhe seus pedidos em tempo real
           </p>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Rifas Compradas</p>
-                <p className="text-3xl font-bold">
-                  {userData?.stats.totalTickets || 0}
-                </p>
-              </div>
-              <Ticket className="w-6 h-6 text-primary" />
-            </div>
-          </Card>
+        {/* Last Orders */}
+        {userData?.orders?.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">Ver meus números</h2>
 
-          <Card className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Gasto</p>
-                <p className="text-3xl font-bold">
-                  R$ {userData?.stats.totalSpent?.toFixed(2) || "0.00"}
-                </p>
-              </div>
-              <TrendingUp className="w-6 h-6 text-primary" />
-            </div>
-          </Card>
+            {userData.orders.slice(0, 5).map((order: any) => (
+              <Card key={order.id} className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold">
+                      {order.campaign_name}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {order.quantity} cotas • R${" "}
+                      {Number(order.amount).toFixed(2)}
+                    </p>
+                  </div>
 
-          <Card className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Campanhas Ativas
-                </p>
-                <p className="text-3xl font-bold">
-                  {userData?.stats.activeCampaigns || 0}
-                </p>
-              </div>
-              <Calendar className="w-6 h-6 text-primary" />
-            </div>
-          </Card>
-        </div>
+                  {/* 🔥 BOTÃO DIRETO NO ENDPOINT */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleViewNumbers}
+                  >
+                    Meus Números
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* ✅ CRIAR RIFA — INTACTO */}
           <Card className="p-6 hover:shadow-lg transition-shadow">
-            <div className="space-y-4">
+            <div className="space-y-6">
               <h3 className="text-lg font-bold">Criar Nova Rifa</h3>
               <p className="text-sm text-muted-foreground">
                 Inicie sua própria campanha
               </p>
 
               <Link to="/admin/NewCampaign">
-                <Button className="w-full">Criar Rifa</Button>
+                <Button className="w-full mt-2">Criar Rifa</Button>
               </Link>
             </div>
           </Card>
 
+          {/* ✅ MINHAS RIFAS — INTACTO */}
           <Card className="p-6 hover:shadow-lg transition-shadow">
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold">Meus Pedidos</h3>
+            <div className="space-y-6">
+              <h3 className="text-lg font-bold">Minhas Rifas</h3>
               <p className="text-sm text-muted-foreground">
-                Acompanhe os pagamentos
+                Acesse suas campanhas ativas
               </p>
 
               <Link to="/app/pedidos">
-                <Button className="w-full">Ver Pedidos</Button>
+                <Button className="w-full mt-2">Ver Rifas</Button>
               </Link>
             </div>
           </Card>
         </div>
-
-        {/* Last Orders */}
-        {userData.orders.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold">Últimos Pedidos</h2>
-
-            {userData.orders.slice(0, 5).map((order: any) => (
-              <Card key={order.id} className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold">{order.campaign_name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {order.quantity} cotas • R$
-                      {Number(order.amount).toFixed(2)}
-                    </p>
-                  </div>
-
-                  <Link to={`/app/pedidos/${order.id}`}>
-                    <Button size="sm" variant="outline">
-                      Ver Detalhes
-                    </Button>
-                  </Link>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
 
         <div className="pt-8 border-t border-border">
           <Button variant="destructive" onClick={handleLogout}>
@@ -186,6 +180,13 @@ const DashboardApp = () => {
           </Button>
         </div>
       </main>
+
+      {/* ✅ MODAL GLOBAL DOS NÚMEROS */}
+      <UserTicketsModal
+        open={ticketsModalOpen}
+        onClose={() => setTicketsModalOpen(false)}
+        tickets={userTickets}
+      />
     </div>
   );
 };

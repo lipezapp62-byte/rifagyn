@@ -1,203 +1,264 @@
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Clock, AlertCircle } from "lucide-react";
+import { Copy, Check, X } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { getAuthToken } from "@/lib/api";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface PixPaymentPanelProps {
   orderId: string;
-  campaignName: string;
   amount: number;
   pixCode: string;
   qrCodeBase64: string;
-  status: 'pending' | 'paid' | 'expired';
+  status: "pending" | "paid" | "expired";
   expiresAt: string;
-  onStatusChange?: (newStatus: 'pending' | 'paid' | 'expired') => void;
+  onStatusChange?: (newStatus: "pending" | "paid" | "expired") => void;
+  onClose: () => void; // 👈 ADICIONADO
 }
 
 export function PixPaymentPanel({
   orderId,
-  campaignName,
   amount,
   pixCode,
   qrCodeBase64,
   status: initialStatus,
   expiresAt,
   onStatusChange,
+  onClose,
 }: PixPaymentPanelProps) {
   const [copied, setCopied] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState<string>('');
+  const [timeRemaining, setTimeRemaining] = useState("05:00");
   const [status, setStatus] = useState(initialStatus);
-  
-  // Countdown timer
+  const [open, setOpen] = useState(true);
+  const [progress, setProgress] = useState(100);
+
+  const [showNotice, setShowNotice] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [numbers, setNumbers] = useState<number[] | null>(null);
+
   useEffect(() => {
-    const calculateTimeRemaining = () => {
-      const now = new Date().getTime();
-      const expiryTime = new Date(expiresAt).getTime();
-      const difference = expiryTime - now;
-      
-      if (difference <= 0) {
-        setTimeRemaining('00:00');
-        if (status === 'pending') {
-          setStatus('expired');
-          onStatusChange?.('expired');
+    const timer = setTimeout(() => {
+      setShowNotice(true);
+    }, 10000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const TOTAL_TIME = 5 * 60 * 1000;
+
+  useEffect(() => {
+    const expiry = new Date(expiresAt).getTime();
+
+    const updateTimer = () => {
+      const diff = expiry - Date.now();
+
+      if (diff <= 0) {
+        setTimeRemaining("00:00");
+        setProgress(0);
+
+        if (status === "pending") {
+          setStatus("expired");
+          onStatusChange?.("expired");
         }
         return;
       }
-      
-      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
-      
+
+      const minutes = Math.floor(diff / 1000 / 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+
       setTimeRemaining(
-        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+        `${minutes.toString().padStart(2, "0")}:${seconds
+          .toString()
+          .padStart(2, "0")}`
       );
+
+      const percent = (diff / TOTAL_TIME) * 100;
+      setProgress(Math.max(0, percent));
     };
-    
-    calculateTimeRemaining();
-    const interval = setInterval(calculateTimeRemaining, 1000);
-    
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
   }, [expiresAt, status, onStatusChange]);
-  
+
   const handleCopyPix = async () => {
+    await navigator.clipboard.writeText(pixCode);
+    setCopied(true);
+    toast.success("Código PIX copiado!");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const [showAllNumbers, setShowAllNumbers] = useState(false);
+
+  const handleCheckPayment = async () => {
+    setChecking(true);
+
     try {
-      await navigator.clipboard.writeText(pixCode);
-      setCopied(true);
-      toast.success('Código PIX copiado com sucesso!');
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      toast.error('Erro ao copiar código PIX');
+      const res = await fetch(
+        "https://criadordigital-n8n-webhook.tw9mqd.easypanel.host/webhook/rifagyn/orders/check",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ order_id: orderId }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (data.status === "paid") {
+        setNumbers(data.numbers);
+        setStatus("paid");
+        onStatusChange?.("paid");
+      } else {
+        toast.error("Pagamento ainda não confirmado");
+      }
+    } catch {
+      toast.error("Erro ao verificar pagamento");
     }
+
+    setChecking(false);
   };
-  
-  const getStatusBadge = () => {
-    switch (status) {
-      case 'paid':
-        return <Badge className="bg-paid text-white">Pago</Badge>;
-      case 'expired':
-        return <Badge className="bg-expired text-white">Expirado</Badge>;
-      default:
-        return <Badge className="bg-pending text-white">Pendente</Badge>;
-    }
-  };
-  
+
   return (
-    <Card className="overflow-hidden border-2 border-primary/20">
-      {/* Header */}
-      <div className="bg-card-elevated border-b border-border p-6">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex-1">
-            <h3 className="text-xl font-bold mb-1">Pagamento PIX</h3>
-            <p className="text-sm text-muted-foreground">{campaignName}</p>
-          </div>
-          {getStatusBadge()}
-        </div>
-        
-        {status === 'pending' && (
-          <div className="flex items-center gap-3 p-3 bg-warning/10 border border-warning/20 rounded-lg">
-            <Clock className="w-5 h-5 text-warning flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-warning">
-                Seu PIX expira em {timeRemaining}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Realize o pagamento antes que o tempo expire
-              </p>
-            </div>
-          </div>
-        )}
-        
-        {status === 'expired' && (
-          <div className="flex items-center gap-3 p-3 bg-expired/10 border border-expired/20 rounded-lg">
-            <AlertCircle className="w-5 h-5 text-expired flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-expired">
-                Este pedido expirou
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Faça um novo pedido para participar da campanha
-              </p>
-            </div>
-          </div>
-        )}
-        
-        {status === 'paid' && (
-          <div className="flex items-center gap-3 p-3 bg-paid/10 border border-paid/20 rounded-lg">
-            <Check className="w-5 h-5 text-paid flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-paid">
-                Pagamento confirmado!
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Seus números já estão reservados
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-      
-      {/* Content */}
-      <div className="p-6 space-y-6">
-        {/* Amount */}
-        <div className="text-center py-4">
-          <p className="text-sm text-muted-foreground mb-1">Valor a pagar</p>
-          <p className="text-4xl font-bold text-primary">
-            R$ {(amount || 0).toFixed(2)}
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        setOpen(value);
+
+        // 🔥 AQUI LIMPA A RIFA QUANDO FECHA
+        if (!value) {
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="max-w-[360px] p-0 overflow-y-auto max-h-[90vh] bg-background border-none [&>button]:hidden">
+        <DialogHeader className="text-center py-3 border-b border-border relative">
+          <DialogTitle className="text-foreground text-lg font-semibold">
+            Depositar
+          </DialogTitle>
+
+          <p className="text-xs text-muted-foreground mt-1 px-3">
+            Escaneie o QR Code abaixo usando o app<br />
+            do seu banco para realizar o pagamento
           </p>
-        </div>
-        
-        {status === 'pending' && (
-          <>
-            {/* QR Code */}
-            <div className="bg-white p-4 rounded-lg flex justify-center">
+
+          <button
+            onClick={() => {
+              setOpen(false);
+              onClose(); // 👈 garante reset total
+            }}
+            className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
+          >
+            <X size={16} />
+          </button>
+        </DialogHeader>
+
+        <div className="px-3 py-4 space-y-4">
+          {/* QR Code */}
+          <div className="flex justify-center">
+            <div className="bg-white p-2 rounded-xl">
               <img
                 src={`data:image/png;base64,${qrCodeBase64}`}
-                alt="QR Code PIX"
-                className="w-64 h-64 object-contain"
+                className="w-56 h-56"
               />
             </div>
-            
-            {/* PIX Code */}
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-center">
-                Ou copie o código PIX
+          </div>
+
+          {/* CAIXA DO PIX */}
+          <div className="border border-dashed border-border rounded-md p-4 space-y-3">
+            <p className="text-center text-4xl font-extrabold text-primary tracking-wide">
+              R$ {amount.toFixed(2).replace(".", ",")}
+            </p>
+
+            {/* CAIXA CODIGO PIX SEM PRETO CHAPADO */}
+            <div className="bg-card rounded-md py-2 px-3 text-center">
+              <p className="truncate text-sm text-muted-foreground font-mono">
+                {pixCode.slice(0, 32)}...
               </p>
-              
-              <div className="flex gap-2">
-                <Input
-                  value={pixCode}
-                  readOnly
-                  className="font-mono text-xs"
-                />
-                <Button
-                  onClick={handleCopyPix}
-                  size="icon"
-                  className="flex-shrink-0"
-                >
-                  {copied ? (
-                    <Check className="w-4 h-4" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </Button>
+            </div>
+
+            <Button
+              onClick={handleCopyPix}
+              className="w-full py-3 rounded-md border border-primary 
+              bg-primary/10 text-primary 
+              hover:bg-primary/20 font-semibold"
+            >
+              {copied ? (
+                <>
+                  <Check size={16} className="mr-2" />
+                  Código Copiado
+                </>
+              ) : (
+                <>
+                  <Copy size={16} className="mr-2" />
+                  Copiar Código
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* BOTÃO JÁ PAGUEI */}
+          <div className="flex justify-center pt-1">
+            <button
+              onClick={handleCheckPayment}
+              disabled={checking}
+              className={`
+                transition-all duration-500 overflow-hidden flex items-center justify-center
+                ${checking ? "w-14 h-14 rounded-full" : "w-full h-12 rounded-md"}
+                bg-[#ff6100] hover:bg-[#ff6100] active:bg-[#ff6100] focus:bg-[#ff6100]
+              `}
+            >
+              {!checking ? (
+                <span className="font-semibold text-black text-sm">
+                  Já paguei
+                </span>
+              ) : (
+                <div className="w-6 h-6 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
+              )}
+            </button>
+          </div>
+
+          {/* RESULTADO DOS NÚMEROS */}
+          {numbers && numbers.length > 0 && (
+            <div className="mt-6 text-center space-y-2">
+              <p className="text-white text-sm">Seus números:</p>
+
+              <div className="bg-card p-3 rounded-md text-sm text-foreground break-words">
+                {(showAllNumbers ? numbers : numbers.slice(0, 50)).join(" - ")}
               </div>
+
+              {/* BOTÃO VER MAIS */}
+              {numbers.length > 50 && (
+                <div>
+                  {!showAllNumbers ? (
+                    <button
+                      onClick={() => setShowAllNumbers(true)}
+                      className="text-xs text-[#ff6100] hover:underline"
+                    >
+                      ver todos ({numbers.length})
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setShowAllNumbers(false)}
+                      className="text-xs text-[#ff6100] hover:underline"
+                    >
+                      mostrar menos
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
-            
-            {/* Instructions */}
-            <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground space-y-2">
-              <p className="font-semibold text-foreground">Como pagar:</p>
-              <ol className="list-decimal list-inside space-y-1 text-xs">
-                <li>Abra o app do seu banco</li>
-                <li>Escolha pagar via PIX</li>
-                <li>Escaneie o QR Code ou cole o código</li>
-                <li>Confirme o pagamento</li>
-              </ol>
-            </div>
-          </>
-        )}
-      </div>
-    </Card>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
